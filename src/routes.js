@@ -9,11 +9,24 @@ export const routes = [
     method: 'POST',
     url: buildRoutePath('/tasks'),
     handler: (req, res) => {
+      const { title, description } = req.body
+
+      if(!title) {
+        return res.writeHead(400).end(
+          JSON.stringify({ message: 'title is required' })
+        )
+      }
+
+      if(!description) {
+        return res.writeHead(400).end(
+          JSON.stringify({ message: 'description is required' })
+        )
+      }
 
       const tasks = {
         id: randomUUID(),
-        title: req.body.title, 
-        description: req.body.description,
+        title, 
+        description,
         completed_at: null,
         created_at: new Date(),
         updated_at: new Date(),
@@ -45,6 +58,18 @@ export const routes = [
       const { id } = req.params
       const { title, description } = req.body
 
+      if(!title || !description) {
+        return res.writeHead(400).end(
+          JSON.stringify({message: 'title or description is required'})
+        )
+      }
+
+      const [task] = database.select('tasks', {id})
+
+      if(!task) {
+        return res.writeHead(404).end();
+      }
+
       database.update('tasks', id, {
         title,
         description,
@@ -60,6 +85,12 @@ export const routes = [
     handler: (req, res) => {
       const { id } = req.params
 
+      const [task] = database.select('tasks', {id})
+
+      if(!task) {
+        return res.writeHead(404).end()
+      }
+
       database.delete('tasks', id)
 
       return res.writeHead(204).end();
@@ -71,11 +102,18 @@ export const routes = [
     handler: (req, res) => {
       const { id } = req.params
 
-      database.complete('tasks', id, {
-        completed_at: new Date()
-      })
+      const [task] = database.select('tasks', {id})
 
-      return res.writeHead(200).end();
+      if(!task) {
+        return res.writeHead(404).end()
+      }
+
+      const isTaskCompleted = !!task.completed_at
+      const completed_at = isTaskCompleted ? null : new Date()
+
+      database.update('tasks', id, {completed_at})
+
+      return res.writeHead(204).end();
     }
   }
 ]
